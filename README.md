@@ -1,0 +1,1 @@
+`split` command implemented with Go
