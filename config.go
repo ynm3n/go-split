@@ -123,6 +123,7 @@ func parseFlagN(s string) (Chunk, error) {
 	return Chunk{N: num}, err
 }
 
+// 処理内容がわかりにくい気がするのでもう少し分割したい
 func parseFlagB(s string) (int, error) {
 	if num, err := parseNumber(s); err == nil { // エラーなしの場合
 		return num, nil
@@ -156,12 +157,9 @@ func parseFlagB(s string) (int, error) {
 	if errors.Is(err, strconv.ErrRange) {
 		return 0, err
 	}
-	bg := big.NewInt(int64(num))
-	bg.Mul(bg, big.NewInt(int64(unit)))
-	if bg.Cmp(big.NewInt(math.MaxInt)) > 0 { // オーバーフロー避け
+	if overflowWhenProduct(num, unit) {
 		return 0, fmt.Errorf("overflow: %w", ErrInvalidFlag)
 	}
-	num = int(bg.Int64())
 	if !isValidNumber(num) {
 		return 0, ErrInvalidNumber
 	}
@@ -200,4 +198,10 @@ func parseNumber(s string) (int, error) {
 
 func isValidNumber(a int) bool {
 	return a > 0
+}
+
+func overflowWhenProduct(a, b int) bool {
+	bg := big.NewInt(int64(a))
+	bg.Mul(bg, big.NewInt(int64(b)))
+	return bg.Cmp(big.NewInt(math.MaxInt)) > 0
 }
