@@ -2,19 +2,20 @@ package split
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 )
 
-func Do(cf *Config) error {
+func Run(cf *Config) error {
 	var src io.Reader
 	if cf.Interactive {
 		src = os.Stdin
 	} else {
 		f, err := os.Open(cf.SrcName)
-		if err != nil { // 疑問: ファイルが存在しない問題はどこで対処すべき？
+		if err != nil {
 			return err
 		}
 		defer f.Close()
@@ -24,21 +25,40 @@ func Do(cf *Config) error {
 	var err error
 	switch cf.SelectedFlag {
 	case FlagL:
-		err = splitByLine(src, cf.Prefix, cf.L)
+		err = ByFlagL(src, cf.Prefix, cf.L)
 	case FlagN:
-		err = splitByChunk(src, cf.Prefix, cf.N)
+		err = ByFlagN(src, cf.Prefix, cf.N)
 	case FlagB:
-		err = splitByByte(src, cf.Prefix, cf.B)
+		err = ByFlagB(src, cf.Prefix, cf.B)
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func splitByLine(src io.Reader, prefix string, ln int) error {
+const defaultOriginSuffix = "aa"
+
+func ByFlagL(src io.Reader, prefix string, n int) error {
 	r := bufio.NewReader(src)
-	for suffix := []rune("aa"); ; nextSuffix(&suffix) {
-		err := writeLine(r, prefix+string(suffix), ln)
-		if err != nil {
-			if err == io.EOF {
+	for suffix := []rune(defaultOriginSuffix); ; nextSuffix(&suffix) {
+		name := prefix + string(suffix)
+		if err := writeLines(r, name, n); err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return err
+		}
+	}
+	return nil
+}
+
+func ByFlagB(src io.Reader, prefix string, n int) error {
+	r := bufio.NewReader(src)
+	for suffix := []rune(defaultOriginSuffix); ; nextSuffix(&suffix) {
+		name := prefix + string(suffix)
+		if err := writeBytes(r, name, n); err != nil {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return err
@@ -48,7 +68,8 @@ func splitByLine(src io.Reader, prefix string, ln int) error {
 }
 
 // 工事中
-func splitByChunk(src io.Reader, prefix string, c Chunk) error {
+func ByFlagN(src io.Reader, prefix string, c Chunk) error {
+	return fmt.Errorf("ByFlagN: %w", ErrUnimplemented)
 	// fi, err := src.Stat()
 	// if err != nil {
 	// 	return err
@@ -71,37 +92,22 @@ func splitByChunk(src io.Reader, prefix string, c Chunk) error {
 	// 	}
 	// 	nextSuffix(&suffix)
 	// }
-	return fmt.Errorf("splitByChunk: %w", ErrUnimplemented)
 }
 
-func splitByByte(src io.Reader, prefix string, bt int) error {
-	r := bufio.NewReader(src)
-	for suffix := []rune("aa"); ; nextSuffix(&suffix) {
-		err := writeByte(r, prefix+string(suffix), bt)
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-	}
-	return nil
-}
-
-func writeLine(r *bufio.Reader, name string, cnt int) error {
-	dst, err := os.Create(name)
-	defer dst.Close()
+func writeLines(r *bufio.Reader, name string, n int) error {
+	f, err := os.Create(name)
 	if err != nil {
 		return err
 	}
-	w := bufio.NewWriter(dst)
+	defer f.Close()
+	w := bufio.NewWriter(f)
 	defer w.Flush()
-	for i := 0; i < cnt; i++ {
-		bs, err := r.ReadBytes('\n')
+	for i := 0; i < n; i++ {
+		b, err := r.ReadBytes('\n')
 		if err != nil {
 			return err
 		}
-		_, err = w.Write(bs)
+		_, err = w.Write(b)
 		if err != nil {
 			return err
 		}
@@ -109,23 +115,17 @@ func writeLine(r *bufio.Reader, name string, cnt int) error {
 	return nil
 }
 
-func writeByte(r *bufio.Reader, name string, cnt int) error {
-	dst, err := os.Create(name)
-	defer dst.Close()
+func writeBytes(r *bufio.Reader, name string, n int) error {
+	f, err := os.Create(name)
 	if err != nil {
 		return err
 	}
-	w := bufio.NewWriter(dst)
+	defer f.Close()
+	w := bufio.NewWriter(f)
 	defer w.Flush()
-	for i := 0; i < cnt; i++ {
-		b, err := r.ReadByte()
-		if err != nil {
-			return err
-		}
-		err = w.WriteByte(b)
-		if err != nil {
-			return err
-		}
+	_, err = io.CopyN(w, r, int64(n))
+	if err != nil {
+		return err
 	}
 	return nil
 }

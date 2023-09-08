@@ -10,7 +10,7 @@ func main() {
 		panic(err)
 	}
 
-	if err := split.Do(cf); err != nil {
+	if err := split.Run(cf); err != nil {
 		panic(err)
 	}
 }
