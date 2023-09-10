@@ -25,11 +25,11 @@ func Run(cf *Config) error {
 	var err error
 	switch cf.SelectedFlag {
 	case FlagL:
-		err = ByFlagL(src, cf.Prefix, cf.L)
+		err = ByLines(src, cf.Prefix, cf.L)
 	case FlagN:
 		err = ByFlagN(src, cf.Prefix, cf.N)
 	case FlagB:
-		err = ByFlagB(src, cf.Prefix, cf.B)
+		err = ByBytes(src, cf.Prefix, cf.B)
 	}
 	if err != nil {
 		return err
@@ -37,9 +37,9 @@ func Run(cf *Config) error {
 	return nil
 }
 
-const defaultOriginSuffix = "aa"
-
-func ByFlagL(src io.Reader, prefix string, n int) error {
+// ByBytes split src by n lines.
+// n must be positive.
+func ByLines(src io.Reader, prefix string, n int) error {
 	r := bufio.NewReader(src)
 	for suffix := []rune(defaultOriginSuffix); ; nextSuffix(&suffix) {
 		name := prefix + string(suffix)
@@ -53,7 +53,9 @@ func ByFlagL(src io.Reader, prefix string, n int) error {
 	return nil
 }
 
-func ByFlagB(src io.Reader, prefix string, n int) error {
+// ByBytes split src by n bytes.
+// n must be positive.
+func ByBytes(src io.Reader, prefix string, n int) error {
 	r := bufio.NewReader(src)
 	for suffix := []rune(defaultOriginSuffix); ; nextSuffix(&suffix) {
 		name := prefix + string(suffix)
@@ -129,6 +131,8 @@ func writeBytes(r *bufio.Reader, name string, n int) error {
 	}
 	return nil
 }
+
+const defaultOriginSuffix = "aa"
 
 func nextSuffix(s *[]rune) {
 	t := *s
