@@ -37,13 +37,13 @@ func Run(cf *Config) error {
 	return nil
 }
 
-// ByBytes split src by n lines.
+// ByLines split src by n lines.
 // n must be positive.
 func ByLines(src io.Reader, prefix string, n int) error {
 	r := bufio.NewReader(src)
 	for suffix := []rune(defaultOriginSuffix); ; nextSuffix(&suffix) {
 		name := prefix + string(suffix)
-		if err := writeLines(r, name, n); err != nil {
+		if err := byLines(r, name, n); err != nil {
 			if errors.Is(err, io.EOF) {
 				break
 			}
@@ -59,7 +59,7 @@ func ByBytes(src io.Reader, prefix string, n int) error {
 	r := bufio.NewReader(src)
 	for suffix := []rune(defaultOriginSuffix); ; nextSuffix(&suffix) {
 		name := prefix + string(suffix)
-		if err := writeBytes(r, name, n); err != nil {
+		if err := byBytes(r, name, n); err != nil {
 			if errors.Is(err, io.EOF) {
 				break
 			}
@@ -96,13 +96,13 @@ func ByFlagN(src io.Reader, prefix string, c Chunk) error {
 	// }
 }
 
-func writeLines(r *bufio.Reader, name string, n int) error {
-	f, err := os.Create(name)
+func byLines(r *bufio.Reader, name string, n int) error {
+	dst, err := os.Create(name)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	w := bufio.NewWriter(f)
+	defer dst.Close()
+	w := bufio.NewWriter(dst)
 	defer w.Flush()
 	for i := 0; i < n; i++ {
 		b, err := r.ReadBytes('\n')
@@ -117,7 +117,7 @@ func writeLines(r *bufio.Reader, name string, n int) error {
 	return nil
 }
 
-func writeBytes(r *bufio.Reader, name string, n int) error {
+func byBytes(r *bufio.Reader, name string, n int) error {
 	f, err := os.Create(name)
 	if err != nil {
 		return err
